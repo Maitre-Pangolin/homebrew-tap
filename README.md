@@ -1,8 +1,12 @@
 # Maitre-Pangolin's Homebrew tap
 
 ```bash
+brew tap maitre-pangolin/tap
+brew trust --cask maitre-pangolin/tap/wheelsmith
 brew install --cask maitre-pangolin/tap/wheelsmith
 ```
+
+Homebrew only loads casks from other people's taps once you trust them, hence `brew trust`.
 
 | Cask | App |
 |---|---|
