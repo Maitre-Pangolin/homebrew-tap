@@ -1,0 +1,43 @@
+# Points Casks/wheelsmith.rb at the latest WheelSmith release. Runs every hour and on demand
+# (Actions → Bump WheelSmith → Run workflow, or `gh workflow run bump.yml -R Maitre-Pangolin/homebrew-tap`).
+# Only reads public releases, so it needs no token beyond this repo's own.
+name: Bump WheelSmith
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update the cask to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: Maitre-Pangolin/WheelSmith
+          CASK: Casks/wheelsmith.rb
+        run: |
+          tag="$(gh release view --repo "$REPO" --json tagName -q .tagName)"
+          version="${tag#v}"
+          current="$(sed -n 's/^  version "\(.*\)"$/\1/p' "$CASK")"
+          if [[ "$version" == "$current" ]]; then
+            echo "Already at $current."
+            exit 0
+          fi
+
+          # Hash the zip itself rather than trusting the published .sha256.
+          gh release download "$tag" --repo "$REPO" --pattern "WheelSmith-$version.zip" --dir "$RUNNER_TEMP"
+          sha="$(sha256sum "$RUNNER_TEMP/WheelSmith-$version.zip" | cut -d' ' -f1)"
+
+          sed -i -e "s/^  version \".*\"$/  version \"$version\"/" \
+                 -e "s/^  sha256 \".*\"$/  sha256 \"$sha\"/" "$CASK"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "wheelsmith $version"
+          git push
